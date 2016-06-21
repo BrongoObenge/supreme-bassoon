@@ -8,6 +8,6 @@ import java.util.List;
 
 @Data
 @AllArgsConstructor
-public class Specimen {
-    private int value;
+public class Value<T> {
+    private T value;
 }

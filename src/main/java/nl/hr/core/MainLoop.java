@@ -1,67 +1,73 @@
 package nl.hr.core;
 
+import lombok.AllArgsConstructor;
+
 import java.util.*;
 
+@AllArgsConstructor
 public class MainLoop {
     private double crossoverRate;
     private double mutationRate;
     private boolean elitsm;
     private int populationSize;
     private int numberOfIterations;
-    private Random random;
 
-    public MainLoop(double crossoverRate, double mutationRate, boolean elitsm, int populationSize, int numberOfIterations) {
-        this.crossoverRate = crossoverRate;
-        this.mutationRate = mutationRate;
-        this.elitsm = elitsm;
-        this.populationSize = populationSize;
-        this.numberOfIterations = numberOfIterations;
-        this.random = new Random();
-    }
 
-    public List<Specimen> populateSpecimens() {
-        List<Specimen> specimenPopulation = new ArrayList<Specimen>();
 
-        for (int i = 0; i < populationSize; i++) {
-            specimenPopulation.add(new Specimen(random.nextInt(31)));
-        }
-        return specimenPopulation;
-    }
 
-    public Specimen rouletteWheelSelection(List<Specimen> specimenPopulation) {
-        //tips found at http://www.obitko.com/tutorials/genetic-algorithms/selection.ph
+    private Value<Integer> rouletteWheelSelection(List<Value<Integer>> specimenPopulation) {
         int sumOfFitness = 0;
-        for (Specimen specimen : specimenPopulation) {
-            double computedValue = assignmentFormula(specimen.getValue());
+        for (Value<Integer> specimen : specimenPopulation) {
+            double computedValue = calcFitness(specimen.getValue());
             sumOfFitness += computedValue;
         }
         int randNumber = new Random().nextInt(sumOfFitness);
         int partialSumOfFitness = 0;
-        for (int i = 0; i < specimenPopulation.size(); i++) {
-            partialSumOfFitness += assignmentFormula(specimenPopulation.get(i).getValue());
+
+        for (Value<Integer> aSpecimenPopulation : specimenPopulation) {
+            partialSumOfFitness += calcFitness(aSpecimenPopulation.getValue());
             if (partialSumOfFitness >= randNumber) {
-                return specimenPopulation.get(i);
+                return aSpecimenPopulation;
             }
         }
-        return new Specimen(-1);
+        return new Value<>(-1);
+    }
+    private double calcAverageFitness(List<Value<Integer>> population) {
+        double result = 0;
+        for (Value<Integer> v : population) {
+            result += calcFitness(v.getValue());
+        }
+        return result / population.size();
+    }
+    private Map.Entry<Value<Integer>, Integer> getFittest(List<Value<Integer>> population) {
+        Map<Value<Integer>, Integer> result = new HashMap<>();
+        for (Value<Integer> e : population) {
+            result.put(e, calcFitness(e.getValue()));
+        }
+        return Collections.max(result.entrySet(),
+                (o1, o2) -> o1.getValue().compareTo(o2.getValue()));
     }
 
-    private Specimen singlePointCrossOver(Specimen parent1, Specimen parent2) {
-        String binaryStringParent1 = convertToBin(parent1);
-        String binaryStringParent2 = convertToBin(parent2);
-        //Random point for the binaryString crossOver.
-        int rand = new Random().nextInt(binaryStringParent1.length() - 1);//size of parent1 & 2 are the same
-        String subStringParent1 = binaryStringParent1.substring(0, rand);
-        String subStringParent2 = binaryStringParent2.substring(rand, binaryStringParent2.length());
-        //Try-Catch in case conversion goes wrong return a specimen with negative value;
+    private int calcFitness(int x) {
+        int r = (int) (-(Math.pow(x, 2)) + (7 * x));
+        return (r < 0) ? 0 : r;
+    }
+
+    private Value<Integer> singlePointXover(Value<Integer> p1, Value<Integer> p2) {
+        String binp1 = convertToBin(p1);
+        String binp2 = convertToBin(p2);
+        int rand = new Random().nextInt(binp1.length() - 1);
+        String p1Dna = binp1.substring(0, rand);
+        String p2Dna = binp2.substring(rand, binp2.length());
         try {
-            return new Specimen(Integer.parseInt(subStringParent1 + subStringParent2, 2));
+            return new Value<Integer>(Integer.parseInt(p1Dna + p2Dna, 2));
         } catch (Exception ex) {
-            return new Specimen(-1);
+            return new Value<Integer>(-1);
         }
     }
-    private String convertToBin(Specimen spec) {
-        String value = Integer.toBinaryString(spec.getValue());
+
+    private String convertToBin(Value<Integer> convert) {
+        String value = Integer.toBinaryString(convert.getValue());
         StringBuilder sb = new StringBuilder();
         if(value.length() < 5) {
             int missingZeroes = 5 - value.length();
@@ -74,71 +80,54 @@ public class MainLoop {
         }
     }
 
-    private Specimen mutation(Specimen specimen) {
+    private Value<Integer> mutation(Value<Integer> specimen) {
         String specimenBinaryString = convertToBin(specimen);
-        int rand = new Random().nextInt(specimenBinaryString.length()); //
-        char spec = specimenBinaryString.charAt(rand);
-        char[] chars;
-        if (spec == '0') {
-            chars = specimenBinaryString.toCharArray();
-            chars[rand] = '1';
-            return new Specimen(Integer.parseInt(String.valueOf(chars), 2));
+        int r = new Random().nextInt(specimenBinaryString.length());
+        char tempValue = specimenBinaryString.charAt(r);
+        char[] tempChars;
+        if (tempValue == '0') {
+            tempChars = specimenBinaryString.toCharArray();
+            tempChars[r] = '1';
+            return new Value<Integer>(Integer.parseInt(String.valueOf(tempChars), 2));
         } else {
-            chars = specimenBinaryString.toCharArray();
-            chars[rand] = '0';
-            return new Specimen(Integer.parseInt(String.valueOf(chars), 2));
+            tempChars = specimenBinaryString.toCharArray();
+            tempChars[r] = '0';
+            return new Value<Integer>(Integer.parseInt(String.valueOf(tempChars), 2));
         }
-
     }
 
-    public double averageFitnessFromPopulation(List<Specimen> specimenPopulation) {
-        double result = 0;
-        for (Specimen specimen : specimenPopulation) {
-            result += assignmentFormula(specimen.getValue());
-        }
-        return result / specimenPopulation.size();
-    }
 
-    public Map.Entry<Specimen, Integer> getFittestSpecimen(List<Specimen> specimenPopulation) {
-        HashMap<Specimen, Integer> fittestSpecimenMap = new HashMap<Specimen, Integer>();
-        //compute and return a sorted list with the highest fit level being at the
-        for (Specimen specimen : specimenPopulation) {
-            fittestSpecimenMap.put(specimen, assignmentFormula(specimen.getValue()));
+    private List<Value<Integer>> populateSpecimens() {
+        List<Value<Integer>> specimenPopulation = new ArrayList<>();
+        for (int i = 0; i < populationSize; i++) {
+            specimenPopulation.add(new Value<Integer>(new Random().nextInt(31)));
         }
-        return Collections.max(fittestSpecimenMap.entrySet(),
-                (o1, o2) -> o1.getValue().compareTo(o2.getValue()));
-    }
-
-    private int assignmentFormula(int x) {
-        //compute fitness
-        //f(x) = −x 2 + 7x see assignment description
-        int r = (int) (-(Math.pow(x, 2)) + 7 * x);
-        return (r < 0) ? 0 : r;
+        return specimenPopulation;
     }
 
     public void run() {
         Random random = new Random();
-        Specimen offspring;
-        List<Specimen> currentPopulation = populateSpecimens(); //populate randomly first time
-        int startIndex;
+        Value<Integer> offspring;
+        List<Value<Integer>> currentPopulation = populateSpecimens(); //populate randomly first time
+        int index = -1;
         for (int i = 0; i < numberOfIterations; i++) {
-            List<Specimen> newPopulation = new ArrayList<>();
+            List<Value<Integer>> newPopulation = new ArrayList<>();
             System.out.println(String.format("Generation %s", i));
             if (elitsm) {
-                List<Specimen> fittest = new ArrayList<>();
-                newPopulation.add(getFittestSpecimen(currentPopulation).getKey());
-                startIndex = 1;
+                List<Value<Integer>> fittest = new ArrayList<>();
+                newPopulation.add(getFittest(currentPopulation).getKey());
+                index = 1;
             } else {
-                startIndex = 0;
+                index = 0;
             }
-            for (int j = startIndex; j < populationSize; j++) {
+            for (int a = index; a < populationSize; a++) {
                 //Create new specimen for the current population
                 //Get parent1 && parent2
-                Specimen parent1 = rouletteWheelSelection(currentPopulation);
-                Specimen parent2 = rouletteWheelSelection(currentPopulation);
+                Value<Integer> parent1 = rouletteWheelSelection(currentPopulation);
+                Value<Integer> parent2 = rouletteWheelSelection(currentPopulation);
                 //Perform Crossover
                 if (random.nextDouble() < crossoverRate) {
-                    offspring = singlePointCrossOver(parent1, parent2);
+                    offspring = singlePointXover(parent1, parent2);
                 } else {
                     offspring = parent1;
                 }
@@ -154,18 +143,18 @@ public class MainLoop {
             System.out.println(String.format("==========================TEST GENERATION %s======================================================="
                     , i));
             //Print Average Fittest
-            System.out.println(String.format("Average Fittest score: %s", averageFitnessFromPopulation(currentPopulation)));
+            System.out.println(String.format("Average Fittest score: %s", calcAverageFitness(currentPopulation)));
             //Print Best Fittest Score
-            System.out.println(String.format("Best Fittest Score: %s", getFittestSpecimen(currentPopulation).getValue()));
+            System.out.println(String.format("Best Fittest Score: %s", getFittest(currentPopulation).getValue()));
             //Print Best Individual
-            System.out.println(String.format("Best individual : x = %s", getFittestSpecimen(currentPopulation).getKey().getValue()));
+            System.out.println(String.format("Best individual : x = %s", getFittest(currentPopulation).getKey().getValue()));
             System.out.println("=======================END TEST==========================================================");
         }
         //Print Average Fittest
-        System.out.println(String.format("Average Fittest score: %s", averageFitnessFromPopulation(currentPopulation)));
+        System.out.println(String.format("Average Fittest score: %s", calcAverageFitness(currentPopulation)));
         //Print Best Fittest Score
-        System.out.println(String.format("Best Fittest Score: %s", getFittestSpecimen(currentPopulation).getValue()));
+        System.out.println(String.format("Best Fittest Score: %s", getFittest(currentPopulation).getValue()));
         //Print Best Individual
-        System.out.println(String.format("Best individual : x = %s", getFittestSpecimen(currentPopulation).getKey().getValue()));
+        System.out.println(String.format("Best individual : x = %s", getFittest(currentPopulation).getKey().getValue()));
     }
 }
