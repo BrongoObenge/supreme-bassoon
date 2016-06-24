@@ -6,14 +6,12 @@ import java.util.*;
 
 @AllArgsConstructor
 public class MainLoop {
+
     private double crossoverRate;
     private double mutationRate;
     private boolean elitsm;
     private int populationSize;
     private int numberOfIterations;
-
-
-
 
     private Value<Integer> rouletteWheelSelection(List<Value<Integer>> specimenPopulation) {
         int sumOfFitness = 0;
@@ -32,6 +30,7 @@ public class MainLoop {
         }
         return new Value<>(-1);
     }
+
     private double calcAverageFitness(List<Value<Integer>> population) {
         double result = 0;
         for (Value<Integer> v : population) {
@@ -39,6 +38,7 @@ public class MainLoop {
         }
         return result / population.size();
     }
+
     private Map.Entry<Value<Integer>, Integer> getFittest(List<Value<Integer>> population) {
         Map<Value<Integer>, Integer> result = new HashMap<>();
         for (Value<Integer> e : population) {
@@ -96,7 +96,6 @@ public class MainLoop {
         }
     }
 
-
     private List<Value<Integer>> populateSpecimens() {
         List<Value<Integer>> specimenPopulation = new ArrayList<>();
         for (int i = 0; i < populationSize; i++) {
@@ -114,7 +113,6 @@ public class MainLoop {
             List<Value<Integer>> newPopulation = new ArrayList<>();
             System.out.println(String.format("Generation %s", i));
             if (elitsm) {
-                List<Value<Integer>> fittest = new ArrayList<>();
                 newPopulation.add(getFittest(currentPopulation).getKey());
                 index = 1;
             } else {
@@ -137,7 +135,6 @@ public class MainLoop {
                 }
                 newPopulation.add(offspring);
             }
-            //The new population becomes the current for the next iteration.
             currentPopulation = newPopulation;
 
             System.out.println(String.format("==========================TEST GENERATION %s======================================================="
